@@ -11,6 +11,11 @@
   It is a good idea to list the modules that your application depends on in the package.json in the project root
  */
 var util = require('util');
+const https = require('https');
+
+global.sunRise = "";
+global.sunSet = "";
+
 'use strict';
 
 // en0 192.168.1.101
@@ -34,95 +39,96 @@ module.exports = {
 
 function save(req, res) {
   // variables defined in the Swagger document can be referenced using req.swagger.params.{parameter_name}
-  // Get IP of the caller
+ 
+ 
+  /* Get IP of the caller */
   var ip = req.connection.remoteAddress;
   if (ip.substr(0, 7) == "::ffff:") {
     ip = ip.substr(7)
   }
-
-  var mac = req.swagger.params.sensorid.value;
-  var sensorId = req.swagger.params.sensorid.value;
+ 
+  /* Grab all values to insert */
+  var mac = req.query.mac;
+  const now = moment(new Date()); 
   
-  var sensorValue = req.swagger.params.sensorvalue.value;
-  var tabToInsert = [ req.connection.remoteAddress, req.swagger.params.mac.value, 
-         req.swagger.params.sensorid.value, req.swagger.params.sensorvalue.value];
-  
-  // INSERT
-  DBConnect.UPDATE(`INSERT INTO COLLECT (IPID, MACID, SENSORID, VAUE) VALUES ('${ip}', '${req.swagger.params.sensorid.value}', '${req.swagger.params.sensorid.value}', '${req.swagger.params.sensorvalue.value}')`, (error, result) => {
-    if (error) {
-      console.error('DB ERROR',error);
-    } else {
-      res.json(200);
-    }
-  }) ;
-
- /* for (var property1 in req.swagger.params) {
+  var sensorValues = '' ;
+  if (req.query.sensor1id !== undefined && req.query.sensor1value !== undefined) {
+    sensorValues += `(${now.unix()}, '${ip}', '${mac}', '${req.query.sensor1id}', '${req.query.sensor1value}')`;
+  }
+  if (req.query.sensor2id !== undefined && req.query.sensor2value !== undefined) {
+    sensorValues += `, (${now.unix()}, '${ip}', '${mac}', '${req.query.sensor2id}', '${req.query.sensor2value}')`;
+  }
+  if (req.query.sensor3id !== undefined && req.query.sensor3value !== undefined) {
+    sensorValues += `, (${now.unix()}, '${ip}', '${mac}', '${req.query.sensor3id}', '${req.query.sensor3value}')`;
+  }
+  if (req.query.sensor4id !== undefined && req.query.sensor4value !== undefined) {
+    sensorValues += `, (${now.unix()}, '${ip}', '${mac}', '${req.query.sensor4id}', '${req.query.sensor4value}')`;
+  }
+  if (req.query.sensor5id !== undefined && req.query.sensor5value !== undefined) {
+    sensorValues += `, (${now.unix()}, '${ip}', '${mac}', '${req.query.sensor5id}', '${req.query.sensor5value}')`;
+  }
+ 
+  const parameters = `[API] call with ip:${ip}, mac:${mac}, sensor:${sensorValues}`;
+  console.log(parameters);
+ 
+ /* INSERT values */
+  if (mac !== undefined && ip !== undefined && sensorValues.length > 0) {
     
-    txt += ` | ${property1}: ${req.swagger.params[property1].value}`;
-    if ( property1 != 'mac' ) {
-      tabToInsert.push( [req.connection.remoteAddress, req.swagger.params.mac.value, property1, req.swagger.params[property1].value] );
-    }
+    // INSERT
+    DBConnect.UPDATE(`INSERT INTO COLLECT (EPOCH, IPID, MACID, SENSORID, VALUE) VALUES ${sensorValues}`, (error, result) => {
+    
+      if (error) {
+        returnCode = 400;
+        errorMessages.push(`[DB ERROR] Cannot save data in database ${error}`);
+      } else {
+        returnCode = 200;
+      }
 
-  }*/
+    }) ;
+  } else {
+    returnCode = 400;
+    errorMessages.push(`[API ERROR] Cannot process the request with parameters sent: ${parameters}`);
+  }
 
-/*
-  // Parse all values entered
-  var mac = req.swagger.params.mac.value ;
-  var txt = `Device # ${mac}:`;
-  
-  var temp = req.swagger.params.temp.value;
-  if (temp != undefined) txt += `
-     temp: ${temp}`;
-  */
-  // TODO1: Save data in database
-    // Mac of the device
-    // Datetime
-    // Sensor data  {TEMPERATURE, HYGROMETRY, UVA, UVB, ATMOSPHERE, RAIN, SOIL, }
-    // If an unknown data is sent save the data under OTHER
+  // TODO1: use a put in order to insert n values
 
   // TODO2: reconnect to database if not connected
   
-  // TODO3: Handle date time function of IP timezone
-  /* http://ip-api.com/json/208.80.152.201
-
-    var moment = require('moment-timezone');
-    moment().tz(result.timezone).format();
-    
-    ...
-
-  */
-
-  
-  /*console.log(`IP: ${req.connection.remoteAddress}`);
+  // TODO3: sunrise/sunset function of ip calling or put data - synchrone 
  
-  var os = require('os');
-  var ifaces = os.networkInterfaces();
-
-  Object.keys(ifaces).forEach(function (ifname) {
-    var alias = 0;
-
-    ifaces[ifname].forEach(function (iface) {
-      if ('IPv4' !== iface.family || iface.internal !== false) {
-        // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-        return;
-      }
-
-      if (alias >= 1) {
-        // this single interface has multiple ipv4 addresses
-        console.log(ifname + ':' + alias, iface.address);
-      } else {
-        // this interface has only one ipv4 adress
-        console.log(ifname, iface.address);
-        
-      }
-
-      ++alias;
-    });
-  });
-  */
-
-  //var hello = util.format(txt);
-  // this sends back a JSON response which is a single string
+  /* Get sunrise/sunset time for next response */
+  https.get('https://api.sunrise-sunset.org/json?lat=48.8614397&lng=2.2792582&formatted=0', (resp) => {
+    let data = '';
   
+    // A chunk of data has been recieved.
+    resp.on('data', (chunk) => {
+    data += chunk;
+    });
+  
+    // The whole response has been received. Print out the result.
+    resp.on('end', () => {
+    console.log('UPDATE ' + data);
+    const parsedData = JSON.parse(data)
+    sunRise = moment(parsedData.results.sunrise).format('YYYY-MM-DD HH:mm:ss') ;
+    sunSet = moment(parsedData.results.sunset).format('YYYY-MM-DD HH:mm:ss') ;
 
+    });
+  
+  }).on("error", (err) => {
+    console.log("Error: " + err.message);
+  });
+ 
+
+  let response = {};
+  if (errorMessages.length > 0 ) {
+    response.error = errorMessages; 
+  }
+
+  response.message = returnCode.toString();
+  response.time = moment().format('YYYY-MM-DD HH:mm:ss');
+  response.sunRise = sunRise;
+  response.sunSet = sunSet;
+
+  res.json(response);
+ 
 }

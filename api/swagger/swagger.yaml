@@ -1,0 +1,70 @@
+swagger: "2.0"
+info:
+  version: "0.0.1"
+  title: Sensor collector App
+# during dev, should point to your local machine
+host: localhost:10010
+# basePath prefixes all resource paths 
+basePath: /
+# 
+schemes:
+  # tip: remove http to make production-grade
+  - http
+  - https
+# format of bodies a client can send (Content-Type)
+consumes:
+  - application/json
+# format of the responses to the client (Accepts)
+produces:
+  - application/json
+paths:
+  /save:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: hello_world
+    get:
+      description: Returns a formated text of the data sent by the caller
+      # used as the method name of the controller
+      operationId: save
+      parameters:
+        - name: mac
+          in: query
+          description: The mac of the device
+          required: true
+          type: string
+        - name: sensorid
+          in: query
+          description: The sensorid from the device
+          required: true
+          type: string
+        - name: sensorvalue
+          in: query
+          description: The sensorvalue from the device
+          required: true
+          type: string
+      responses:
+        "200":
+          description: Success
+          schema:
+            # a pointer to a definition
+            $ref: "#/definitions/HelloWorldResponse"
+        # responses may fall through to errors
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  /swagger:
+    x-swagger-pipe: swagger_raw
+# complex objects have schema definitions
+definitions:
+  HelloWorldResponse:
+    required:
+      - message
+    properties:
+      message:
+        type: string
+  ErrorResponse:
+    required:
+      - message
+    properties:
+      message:
+        type: string

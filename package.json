@@ -10,6 +10,7 @@
   "dependencies": {
     "express": "^4.12.3",
     "mysql": "^2.16.0",
+    "moment": "^2.22.2",
     "swagger-express-mw": "^0.1.0"
   },
   "devDependencies": {
